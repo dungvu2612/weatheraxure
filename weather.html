@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simple Weather</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 16px;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #f8f8f8; color: #333;
+    }
+    .card {
+      max-width: 420px; margin: 0 auto;
+      background: #fff; border-radius: 16px; padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
+    .big {
+      font-size: 48px; font-weight: 700; line-height: 1.1;
+    }
+    .muted { color: #666; }
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 999px;
+      background: #4DB6AC; color: white; font-size: 12px; font-weight: 600;
+    }
+    .grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 16px;
+    }
+    .tile {
+      background: #fafafa; border-radius: 12px; padding: 12px; text-align: center;
+      border: 1px solid #eee;
+    }
+    .footer {
+      margin-top: 14px; font-size: 12px; color: #888; text-align: center;
+    }
+    .error {
+      max-width: 420px; margin: 24px auto; padding: 16px;
+      background: #fff3f3; color: #b00020; border: 1px solid #ffd6d6; border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h1>Weather — <span id="cityName">...</span> <span class="badge" id="unitsBadge">metric</span></h1>
+    <div class="row">
+      <div class="big" id="temp">--°</div>
+      <div id="iconWrap"><img id="icon" alt="" width="72" height="72" style="display:none"/></div>
+    </div>
+    <div class="muted" id="desc">Loading...</div>
+    <div class="grid">
+      <div class="tile"><div>Feels like</div><strong id="feels">--°</strong></div>
+      <div class="tile"><div>Humidity</div><strong id="humidity">--%</strong></div>
+      <div class="tile"><div>Wind</div><strong id="wind">-- m/s</strong></div>
+      <div class="tile"><div>Pressure</div><strong id="pressure">-- hPa</strong></div>
+    </div>
+    <div class="footer">Powered by OpenWeatherMap</div>
+  </div>
+  <div class="error" id="error" style="display:none"></div>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const city = params.get('city') || 'Hanoi';
+      const units = params.get('units') || 'metric'; // metric or imperial
+      const apiKey = params.get('key') || 'YOUR_API_KEY_HERE'; // pass via ?key=...
+
+      document.getElementById('cityName').textContent = city;
+      document.getElementById('unitsBadge').textContent = units;
+
+      const unitSymbol = units === 'imperial' ? '°F' : '°C';
+      const windUnit = units === 'imperial' ? 'mph' : 'm/s';
+
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${encodeURIComponent(apiKey)}&units=${encodeURIComponent(units)}`;
+
+      fetch(url)
+        .then(async (res) => {
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`HTTP ${res.status}: ${txt}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          const temp = Math.round(data.main.temp);
+          const feels = Math.round(data.main.feels_like);
+          const humidity = data.main.humidity;
+          const pressure = data.main.pressure;
+          const wind = data.wind && data.wind.speed != null ? data.wind.speed : '--';
+          const desc = data.weather && data.weather[0] ? data.weather[0].description : '';
+
+          document.getElementById('temp').textContent = `${temp}${unitSymbol}`;
+          document.getElementById('feels').textContent = `${feels}${unitSymbol}`;
+          document.getElementById('humidity').textContent = `${humidity}%`;
+          document.getElementById('pressure').textContent = `${pressure} hPa`;
+          document.getElementById('wind').textContent = `${wind} ${windUnit}`;
+          document.getElementById('desc').textContent = desc ? desc[0].toUpperCase() + desc.slice(1) : '';
+
+          // weather icon
+          if (data.weather && data.weather[0] && data.weather[0].icon) {
+            const iconCode = data.weather[0].icon;
+            const img = document.getElementById('icon');
+            img.src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+            img.style.display = 'block';
+          }
+        })
+        .catch((err) => {
+          document.getElementById('card').style.display = 'none';
+          const e = document.getElementById('error');
+          e.style.display = 'block';
+          e.textContent = `Failed to load weather: ${err.message}. Make sure you pass ?key=YOUR_OPENWEATHER_API_KEY and allow CORS via HTTPS hosting.`;
+        });
+    })();
+  </script>
+</body>
+</html>
